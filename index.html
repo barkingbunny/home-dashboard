@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#0b0f17">
+<title>Domů</title>
+<!-- Číslo verze je na dvou místech: zde (APP_VERSION) a ve version.json. Měň vždy obě.
+     Odkazy na CSS a JS dostanou ?v=<verze>, aby je prohlížeč nepodal ze staré cache. -->
+<script>
+var APP_VERSION = '1';
+document.write('<link rel="stylesheet" href="style.css?v=' + APP_VERSION + '">');
+</script>
+</head>
+<body>
+<div class="app" id="app">
+
+  <header class="top">
+    <div class="top-date" id="date">&nbsp;</div>
+    <div class="top-name" id="nameday">&nbsp;</div>
+  </header>
+
+  <section class="tile forecast" id="forecast" role="button" aria-expanded="false">
+    <div class="fc-head">
+      <span class="fc-title">Dnes</span>
+      <span class="fc-minmax" id="fcMinMax"></span>
+      <span class="fc-place" id="fcPlace"></span>
+    </div>
+    <div class="fc-cols" id="fcCols"></div>
+    <div class="fc-foot">
+      <span class="note" id="fcNote"></span>
+      <span class="fc-more" id="fcMore">další dny ▾</span>
+    </div>
+  </section>
+
+  <section class="row2">
+    <div class="tile clock">
+      <div class="clock-time" id="clock">--:--</div>
+    </div>
+    <div class="tile now" id="now">
+      <div class="now-main">
+        <span class="now-icon" id="nowIcon"></span>
+        <span class="now-temp" id="nowTemp">–</span>
+      </div>
+      <div class="now-word" id="nowWord">&nbsp;</div>
+      <div class="now-wind" id="nowWind">&nbsp;</div>
+      <div class="note" id="nowNote"></div>
+    </div>
+  </section>
+
+  <!-- Místo pro další dlaždice: přidej sem <div class="tile">…</div>, mřížka je rozloží vedle sebe. -->
+  <section class="spare" id="spare"></section>
+
+  <nav class="links" id="links"></nav>
+
+  <footer class="foot">
+    <span id="credits">Předpověď a stav počasí: Open-Meteo.com (CC BY 4.0)</span>
+    <span id="version"></span>
+  </footer>
+
+  <!-- Rozbalený výhled na další dny; překrývá dlaždice pod předpovědí. -->
+  <div class="days" id="days" hidden></div>
+
+  <pre class="debug" id="debug" hidden></pre>
+</div>
+
+<script>
+['svatky.js', 'icons.js', 'app.js'].forEach(function (file) {
+  document.write('<script src="' + file + '?v=' + APP_VERSION + '"><\/script>');
+});
+</script>
+</body>
+</html>

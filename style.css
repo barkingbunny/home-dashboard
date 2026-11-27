@@ -1,0 +1,273 @@
+/* Domácí dashboard – tablet 601×962 CSS px na výšku (Chrome/WebView 95).
+   1rem = 1/60 šířky nebo 1/96 výšky viewportu (menší z obou), celá stránka je 60×96 rem.
+   Žádné backdrop-filter, žádné trvalé animace (slabý čip). */
+
+html {
+  font-size: min(1.6667vw, 1.0417vh);
+  height: 100%;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: #07090e;
+  color: #f1f4f9;
+  font-family: Roboto, "Segoe UI", system-ui, sans-serif;
+  font-weight: 400;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+  cursor: default;
+}
+
+.app {
+  position: relative;
+  width: 60rem;
+  height: 96rem;
+  padding: 1.2rem;
+  display: grid;
+  grid-template-rows: 4.6rem 26rem 25rem 1fr 15rem 2rem;
+  grid-row-gap: 1.2rem;
+  row-gap: 1.2rem;
+  background: linear-gradient(165deg, #17233a 0%, #0c111b 55%, #07090e 100%);
+  overflow: hidden;
+}
+
+/* ---- společné ---- */
+
+.tile {
+  background: rgba(255, 255, 255, 0.09);
+  border-radius: 2.4rem;
+  padding: 1.4rem 1.6rem;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.note {
+  font-size: 1.7rem;
+  line-height: 2rem;
+  color: #9eabbd;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.note.warn { color: #ffc46b; }
+
+.dim { opacity: 0.4; }
+
+.ic { display: block; width: 100%; height: 100%; }
+
+/* ---- horní řádek ---- */
+
+.top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 0.8rem;
+  font-size: 3rem;
+  line-height: 1;
+  white-space: nowrap;
+}
+.top-date { font-weight: 500; }
+.top-name { color: #c3cddb; font-weight: 300; overflow: hidden; text-overflow: ellipsis; padding-left: 1.5rem; }
+.top-name.long { font-size: 2.3rem; }
+
+/* ---- předpověď ---- */
+
+.forecast {
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 1rem;
+}
+.forecast.open { background: rgba(255, 255, 255, 0.14); }
+
+.fc-head {
+  display: flex;
+  align-items: baseline;
+  font-size: 2.6rem;
+  line-height: 3rem;
+  white-space: nowrap;
+}
+.fc-title { font-weight: 500; }
+.fc-minmax { margin-left: 1.6rem; font-weight: 300; }
+.fc-minmax .lo { color: #8fc6ff; }
+.fc-minmax .hi { color: #ffb38a; margin-left: 1.2rem; }
+.fc-place { margin-left: auto; font-size: 1.9rem; color: #9eabbd; }
+
+.fc-cols {
+  flex: 1;
+  display: flex;
+  align-items: stretch;
+  margin: 0.8rem -0.4rem 0.6rem;
+  min-height: 0;
+}
+.fc-col {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0;
+  border-radius: 1.4rem;
+}
+.fc-col.next { background: rgba(108, 188, 255, 0.13); border-radius: 0; }
+.fc-col.next.first { border-radius: 1.4rem 0 0 1.4rem; }
+.fc-col.next.last { border-radius: 0 1.4rem 1.4rem 0; }
+.fc-col.next.first.last { border-radius: 1.4rem; }
+.fc-col.next .fc-time { color: #8fc6ff; }
+.fc-time { font-size: 2.1rem; line-height: 2.4rem; color: #c3cddb; }
+.fc-icon { width: 6rem; height: 6rem; }
+.fc-temp { font-size: 3.2rem; line-height: 3.4rem; font-weight: 300; }
+.fc-pop { font-size: 1.9rem; line-height: 2.2rem; color: #6cbcff; }
+.fc-pop.zero { color: #6b7686; }
+
+.fc-msg {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.6rem;
+  color: #9eabbd;
+}
+
+.fc-foot { display: flex; justify-content: space-between; align-items: center; }
+.fc-more { font-size: 1.7rem; line-height: 2rem; color: #9eabbd; padding-left: 1rem; white-space: nowrap; }
+
+/* ---- rozbalený výhled ---- */
+
+.days {
+  position: absolute;
+  left: 1.2rem;
+  right: 1.2rem;
+  top: 34.2rem; /* padding + horní řádek + předpověď + 2 mezery */
+  background: #232d3f;
+  border-radius: 2.4rem;
+  padding: 0.8rem 2rem 1rem;
+  box-shadow: 0 1rem 3rem rgba(0, 0, 0, 0.6);
+  z-index: 5;
+}
+.days[hidden] { display: none; }
+.day {
+  display: flex;
+  align-items: center;
+  height: 6.2rem;
+  font-size: 2.9rem;
+  white-space: nowrap;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+.day:first-child { border-top: 0; }
+.day-name { width: 17rem; }
+.day-name small { font-size: 2.1rem; color: #9eabbd; margin-left: 0.8rem; }
+.day-icon { width: 5rem; height: 5rem; }
+.day-temp { margin-left: auto; width: 17rem; text-align: right; font-weight: 300; }
+.day-temp .lo { color: #8fc6ff; }
+.day-temp .hi { color: #ffb38a; margin-left: 1.2rem; }
+.day-rain { width: 11rem; text-align: right; font-size: 2.3rem; color: #6cbcff; }
+.day-rain.zero { color: #6b7686; }
+
+/* ---- hodiny a aktuální počasí ---- */
+
+.row2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-column-gap: 1.2rem;
+  column-gap: 1.2rem;
+  min-height: 0;
+}
+
+.clock { display: flex; align-items: center; justify-content: center; padding: 0; }
+.clock-time {
+  font-family: "sans-serif-thin", Roboto, "Segoe UI", system-ui, sans-serif;
+  font-size: 10.8rem;
+  line-height: 1;
+  font-weight: 100;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+.now { display: flex; flex-direction: column; justify-content: space-between; padding-top: 1rem; padding-bottom: 1rem; }
+.now-main { display: flex; align-items: center; justify-content: space-between; }
+.now-icon { width: 8.6rem; height: 8.6rem; flex: none; }
+.now-temp {
+  font-family: "sans-serif-thin", Roboto, "Segoe UI", system-ui, sans-serif;
+  font-size: 7.6rem;
+  line-height: 8.6rem;
+  font-weight: 100;
+  white-space: nowrap;
+}
+.now-word { font-size: 2.8rem; line-height: 3.2rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.now-wind { font-size: 2.5rem; line-height: 3rem; color: #c3cddb; white-space: nowrap; }
+
+/* ---- volné místo a rozcestník ---- */
+
+.spare, .links {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  grid-column-gap: 1.2rem;
+  column-gap: 1.2rem;
+  min-height: 0;
+}
+
+.link {
+  display: flex;
+  align-items: center;
+  color: inherit;
+  text-decoration: none;
+  padding: 1.2rem 1.6rem;
+}
+.link:active { background: rgba(255, 255, 255, 0.18); }
+.link-icon { width: 7rem; height: 7rem; flex: none; margin-right: 1.4rem; }
+.link-body { flex: 1; min-width: 0; }
+.link-title { font-size: 2.5rem; line-height: 3rem; color: #c3cddb; white-space: nowrap; }
+.link-value { font-size: 4.4rem; line-height: 5rem; font-weight: 300; white-space: nowrap; }
+.link-value small { font-size: 2.5rem; color: #c3cddb; margin-left: 0.6rem; }
+.link-arrow { width: 3.4rem; height: 3.4rem; flex: none; opacity: 0.5; }
+.link.compact .link-icon { width: 5rem; height: 5rem; margin-right: 1rem; }
+.link.compact .link-value { font-size: 3.2rem; line-height: 4rem; }
+.link.compact .link-arrow { display: none; }
+
+/* ---- patička ---- */
+
+.foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 0.8rem;
+  font-size: 1.5rem;
+  color: #6b7686;
+  white-space: nowrap;
+}
+
+/* ---- ladění (?debug=1) ---- */
+
+.debug {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 60.4rem;      /* přes volné místo mezi hodinami a rozcestníkem */
+  height: 18.4rem;
+  margin: 0;
+  padding: 0.4rem 1rem;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.82);
+  color: #9dffb0;
+  font: 1.3rem/1.2 monospace;
+  white-space: pre-wrap;
+  word-break: break-all;
+  z-index: 9;
+  pointer-events: none;
+}
+.debug[hidden] { display: none; }

@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Ikony počasí</title>
+<style>
+  body { margin: 0; padding: 12px; background: #0c111b; color: #f1f4f9; font: 15px/1.2 Roboto, "Segoe UI", sans-serif; }
+  h1 { font-size: 18px; margin: 0 0 8px; font-weight: 500; }
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); grid-gap: 6px; }
+  .cell { display: flex; align-items: center; background: rgba(255,255,255,.09); border-radius: 10px; padding: 3px 8px; }
+  .cell svg { width: 44px; height: 44px; flex: none; margin-right: 6px; }
+  .cell b { color: #9eabbd; font-weight: 400; margin-right: 6px; min-width: 20px; }
+</style>
+</head>
+<body>
+<h1>Kód WMO → ikona a slovo (den; u jasna a polojasna i noc)</h1>
+<div class="grid" id="grid"></div>
+<script src="icons.js"></script>
+<script>
+var html = '';
+Object.keys(Icons.WMO).forEach(function (code) {
+  var variants = Icons.WMO[code][0].slice(-1) === '*' ? [1, 0] : [1];
+  variants.forEach(function (day) {
+    var w = Icons.weather(Number(code), day);
+    html += '<div class="cell">' + Icons.svg(w.icon) + '<b>' + code + '</b>' + w.word + (variants.length > 1 ? (day ? ' (den)' : ' (noc)') : '') + '</div>';
+  });
+});
+document.getElementById('grid').innerHTML = html;
+</script>
+</body>
+</html>
