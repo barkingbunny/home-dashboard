@@ -36,7 +36,7 @@
       offlineAfter: 60 * 1000
     },
 
-    interval: { water: 5 * MIN, now: 10 * MIN, forecast: 30 * MIN },
+    interval: { water: 5 * MIN, forecast: 30 * MIN },
     fetchTimeout: 10 * 1000,
     retryDelays: [2000, 5000, 15000],
     reloadAfter: 12 * HOUR,          // znovunačtení stránky při probuzení (ochrana proti únikům paměti)
@@ -64,7 +64,6 @@
   var DAYS = ['Neděle', 'Pondělí', 'Úterý', 'Středa', 'Čtvrtek', 'Pátek', 'Sobota'];
   var DAYS_SHORT = ['Ne', 'Po', 'Út', 'St', 'Čt', 'Pá', 'So'];
   var MONTHS = ['ledna', 'února', 'března', 'dubna', 'května', 'června', 'července', 'srpna', 'září', 'října', 'listopadu', 'prosince'];
-  var COMPASS = ['S', 'SV', 'V', 'JV', 'J', 'JZ', 'Z', 'SZ'];
 
   function hm(ms) { var d = new Date(ms); return pad2(d.getHours()) + ':' + pad2(d.getMinutes()); }
   function dayKey(ms) { var d = new Date(ms); return d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate(); }
@@ -233,7 +232,7 @@
   // ---------------------------------------------------------------- předpověď (Open-Meteo)
 
   var OPEN_METEO = 'https://api.open-meteo.com/v1/forecast?latitude=' + CONFIG.place.lat + '&longitude=' + CONFIG.place.lon +
-    '&wind_speed_unit=ms&timezone=Europe%2FPrague&timeformat=unixtime';
+    '&timezone=Europe%2FPrague&timeformat=unixtime';
 
   function loadForecast() {
     if (DEMO) return Promise.resolve(demoForecast());
@@ -347,45 +346,6 @@
     $('forecast').setAttribute('aria-expanded', 'false');
     $('fcMore').textContent = 'další dny ▾';
     daysCloseAt = 0;
-  }
-
-  // ---------------------------------------------------------------- aktuální počasí
-
-  function loadNow() {
-    if (DEMO) return Promise.resolve(demoNow());
-    return getJson(OPEN_METEO + '&current=temperature_2m,weather_code,is_day,wind_speed_10m,wind_direction_10m').then(function (j) {
-      var c = j && j.current;
-      if (!c || toNum(c.temperature_2m) === null) throw new Error('neplatná odpověď');
-      return { t: c.time * 1000, temp: c.temperature_2m, code: c.weather_code, day: c.is_day, wind: c.wind_speed_10m, dir: c.wind_direction_10m };
-    });
-  }
-
-  function windText(speed, dir) {
-    if (toNum(speed) === null) return '';
-    if (speed < 0.5) return 'bezvětří';
-    var side = toNum(dir) === null ? '' : COMPASS[Math.round(dir / 45) % 8] + ' ';
-    return 'vítr ' + side + num(speed) + ' m/s';
-  }
-
-  function renderNow() {
-    var src = nowSrc, d = src.data, st = src.status();
-    var dim = !!(st && st.dim);
-    ['nowIcon', 'nowTemp', 'nowWord', 'nowWind'].forEach(function (id) { $(id).classList.toggle('dim', dim); });
-    if (!d) {
-      $('nowIcon').innerHTML = '';
-      $('nowTemp').textContent = '–';
-      $('nowWord').innerHTML = '&nbsp;';
-      $('nowWind').innerHTML = '&nbsp;';
-      setNote($('nowNote'), st.text, st.warn);
-      return;
-    }
-    var w = Icons.weather(d.code, d.day);
-    $('nowIcon').innerHTML = Icons.svg(w.icon);
-    $('nowTemp').textContent = num(d.temp) + '°';
-    $('nowWord').textContent = w.word;
-    $('nowWind').textContent = windText(d.wind, d.dir);
-    if (st) setNote($('nowNote'), st.text, st.warn);
-    else setNote($('nowNote'), 'Open-Meteo, ' + when(d.t), false);
   }
 
   // ---------------------------------------------------------------- teploty vody (ThingSpeak)
@@ -587,7 +547,7 @@
 
   var lastTick = Date.now(), lastWake = 0;
 
-  function renderAll() { renderForecast(); renderNow(); renderLinks(); renderLights(); }
+  function renderAll() { renderForecast(); renderLinks(); renderLights(); }
 
   function wake(reason) {
     var now = Date.now();
@@ -652,7 +612,6 @@
     }
     return { h: h, d: d };
   }
-  function demoNow() { return { t: Date.now() - 7 * MIN, temp: 7.2, code: 3, day: 1, wind: 4.2, dir: 230 }; }
   function demoLights() {
     return { groups: [{ id: '1', name: 'Obývací pokoj', type: 'Room', anyOn: true, allOn: false, lights: ['1', '2'] }],
       lights: { '1': { name: 'Lampa gauc', on: true, reachable: true }, '2': { name: 'Obyvak stred', on: false, reachable: true } } };
@@ -662,7 +621,6 @@
   // ---------------------------------------------------------------- start
 
   var forecast = new Source('hd.forecast', CONFIG.interval.forecast, loadForecast, renderForecast);
-  var nowSrc = new Source('hd.now', CONFIG.interval.now, loadNow, renderNow);
   var water = new Source('hd.water', CONFIG.interval.water, loadWater, renderLinks);
   var lights = new Source('hd.lights', CONFIG.lights.interval, loadLights, renderLights);
   if (!DEMO && !Hue.configured()) lights.tick = lights.wake = lights.online = function () { };   // bez nastavení se bridge nevolá
@@ -670,6 +628,7 @@
   $('version').textContent = 'v' + VERSION + (DEMO ? ' · ukázková data' : '');
   if (DEBUG) $('debug').hidden = false;
 
+  try { localStorage.removeItem('hd.now'); } catch (e) { }   // pozůstatek po zrušené dlaždici
   renderClock(true);
   renderAll();                                       // hned ukázat poslední uložená data
   sources.forEach(function (s) { s.wake(); });       // a stáhnout, co je zastaralé

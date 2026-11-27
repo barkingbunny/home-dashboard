@@ -10,7 +10,6 @@ Stránka běží na GitHub Pages: <https://barkingbunny.github.io/home-dashboard
 - den, datum a kdo má svátek (tabulka `svatky.js`)
 - předpověď na dnešek po hodinách, ťuknutím výhled na 5 dalších dní (Open-Meteo)
 - digitální hodiny
-- aktuální počasí
 - světla (Philips Hue): obývák se scénami Den / Čtení / Relax / Vypnout a lampa u gauče;
   stránka `svetla.html` se všemi místnostmi
 - rozcestník: lišta Teploty vody s maximem čidla Měřák TUV z poslední dávky (ThingSpeak) a odkaz Světla
@@ -43,7 +42,6 @@ Odkud jsou data:
 | Data | Zdroj | Obnova |
 |---|---|---|
 | předpověď | `api.open-meteo.com` | 30 min |
-| aktuální počasí | `api.open-meteo.com` | 10 min |
 | teploty vody | `api.thingspeak.com`, kanál 3529108, `field8` | 5 min |
 | světla | Hue Bridge v domácí síti | 15 s |
 
@@ -78,5 +76,5 @@ Místní spuštění: `python -m http.server` v kořeni repozitáře a otevřít
 
 ## Zdroje dat a licence
 
-- Předpověď a stav počasí: [Open-Meteo.com](https://open-meteo.com/), licence CC BY 4.0.
+- Předpověď: [Open-Meteo.com](https://open-meteo.com/), licence CC BY 4.0.
 - Svátky: cs.wikipedia.org „Jmeniny v Česku“, porovnáno se svatkyapi.cz.

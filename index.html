@@ -9,7 +9,7 @@
 <!-- Číslo verze je na dvou místech: zde (APP_VERSION) a ve version.json. Měň vždy obě.
      Odkazy na CSS a JS dostanou ?v=<verze>, aby je prohlížeč nepodal ze staré cache. -->
 <script>
-var APP_VERSION = '4';
+var APP_VERSION = '5';
 document.write('<link rel="stylesheet" href="style.css?v=' + APP_VERSION + '">');
 </script>
 </head>
@@ -38,15 +38,6 @@ document.write('<link rel="stylesheet" href="style.css?v=' + APP_VERSION + '">')
     <div class="tile clock">
       <div class="clock-time" id="clock">--:--</div>
     </div>
-    <div class="tile now" id="now">
-      <div class="now-main">
-        <span class="now-icon" id="nowIcon"></span>
-        <span class="now-temp" id="nowTemp">–</span>
-      </div>
-      <div class="now-word" id="nowWord">&nbsp;</div>
-      <div class="now-wind" id="nowWind">&nbsp;</div>
-      <div class="note" id="nowNote"></div>
-    </div>
   </section>
 
   <!-- Světla: dlaždice obýváku a lampy (vyplňuje app.js) -->
@@ -55,7 +46,7 @@ document.write('<link rel="stylesheet" href="style.css?v=' + APP_VERSION + '">')
   <nav class="links" id="links"></nav>
 
   <footer class="foot">
-    <span id="credits">Předpověď a stav počasí: Open-Meteo.com (CC BY 4.0)</span>
+    <span id="credits">Předpověď: Open-Meteo.com (CC BY 4.0)</span>
     <span id="version"></span>
   </footer>
 

@@ -36,7 +36,7 @@ body {
   height: 96rem;
   padding: 1.2rem;
   display: grid;
-  grid-template-rows: 4.6rem 26rem 25rem 1fr 7.5rem 2rem;
+  grid-template-rows: 4.6rem 26rem 19rem 1fr 7.5rem 2rem;
   grid-row-gap: 1.2rem;
   row-gap: 1.2rem;
   background: linear-gradient(165deg, #17233a 0%, #0c111b 55%, #07090e 100%);
@@ -177,38 +177,19 @@ body {
 .day-rain { width: 11rem; text-align: right; font-size: 2.3rem; color: #6cbcff; }
 .day-rain.zero { color: #6b7686; }
 
-/* ---- hodiny a aktuální počasí ---- */
+/* ---- hodiny ---- */
 
-.row2 {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  grid-column-gap: 1.2rem;
-  column-gap: 1.2rem;
-  min-height: 0;
-}
+.row2 { display: grid; grid-template-columns: 1fr; min-height: 0; }
 
 .clock { display: flex; align-items: center; justify-content: center; padding: 0; }
 .clock-time {
   font-family: "sans-serif-thin", Roboto, "Segoe UI", system-ui, sans-serif;
-  font-size: 10.8rem;
+  font-size: 17rem;
   line-height: 1;
   font-weight: 100;
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.02em;
 }
-
-.now { display: flex; flex-direction: column; justify-content: space-between; padding-top: 1rem; padding-bottom: 1rem; }
-.now-main { display: flex; align-items: center; justify-content: space-between; }
-.now-icon { width: 8.6rem; height: 8.6rem; flex: none; }
-.now-temp {
-  font-family: "sans-serif-thin", Roboto, "Segoe UI", system-ui, sans-serif;
-  font-size: 7.6rem;
-  line-height: 8.6rem;
-  font-weight: 100;
-  white-space: nowrap;
-}
-.now-word { font-size: 2.8rem; line-height: 3.2rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.now-wind { font-size: 2.5rem; line-height: 3rem; color: #c3cddb; white-space: nowrap; }
 
 /* ---- volné místo a rozcestník ---- */
 
@@ -288,8 +269,8 @@ body {
   position: absolute;
   left: 0;
   right: 0;
-  top: 60.4rem;      /* přes volné místo mezi hodinami a rozcestníkem */
-  height: 18.4rem;
+  top: 54.4rem;      /* přes dlaždice světel */
+  height: 20rem;
   margin: 0;
   padding: 0.4rem 1rem;
   overflow: hidden;
