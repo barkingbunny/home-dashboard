@@ -416,11 +416,11 @@
       if (l.value === 'water') {
         var d = water.data, st = water.status();
         if (d && d.max !== null) {
-          value = num(d.max, 1) + ' °C<small>max v ' + when(d.maxT) + '</small>';
+          value = num(d.max, 1) + ' °C<small>max ' + when(d.maxT) + '</small>';
           var silent = Date.now() - d.end > CONFIG.waterSilent;
           if (st) { noteText = st.text; warn = st.warn; dim = st.dim; }
           else if (silent) { noteText = 'poslední měření ' + new Date(d.end).getDate() + '. ' + (new Date(d.end).getMonth() + 1) + '. ' + hm(d.end); warn = true; dim = true; }
-          else noteText = 'Měřák TUV, dávka z ' + when(d.end) + ' (' + ago(d.end) + ')';
+          else noteText = 'TUV · dávka ' + when(d.end) + ' · ' + ago(d.end);
         } else if (d) {
           value = '–'; noteText = 'v poslední dávce chybí měření';
         } else {
@@ -428,14 +428,13 @@
         }
       }
       if (linkMsg[i]) { noteText = linkMsg[i].text; warn = linkMsg[i].warn; }
-      html += '<a class="tile link' + (CONFIG.links.length > 1 ? ' compact' : '') + '" href="' + esc(l.url) + '" data-i="' + i + '">' +
+      // nízká lišta: ikona, hodnota (u odkazu bez hodnoty název) a drobný řádek se stářím dat
+      html += '<a class="tile link" href="' + esc(l.url) + '" data-i="' + i + '" title="' + esc(l.title) + '">' +
         '<div class="link-icon">' + Icons.svg(l.icon) + '</div>' +
         '<div class="link-body">' +
-        '<div class="link-title">' + esc(l.title) + '</div>' +
-        (value ? '<div class="link-value' + (dim ? ' dim' : '') + '">' + value + '</div>' : '') +
-        '<div class="note' + (warn ? ' warn' : '') + '">' + esc(noteText) + '</div>' +
+        (value ? '<div class="link-value' + (dim ? ' dim' : '') + '">' + value + '</div>' : '<div class="link-title">' + esc(l.title) + '</div>') +
+        (noteText ? '<div class="note' + (warn ? ' warn' : '') + '">' + esc(noteText) + '</div>' : '') +
         '</div>' +
-        '<div class="link-arrow">' + Icons.svg('odkaz') + '</div>' +
         '</a>';
     });
     $('links').innerHTML = html;
