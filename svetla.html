@@ -6,30 +6,27 @@
 <meta name="robots" content="noindex, nofollow">
 <meta name="theme-color" content="#0b0f17">
 <title>Světla</title>
-<link rel="stylesheet" href="style.css?v=6">
+<link rel="stylesheet" href="style.css?v=7">
 <style>
-  /* stránka se všemi místnostmi; používá stejné jednotky (rem z viewportu) jako hlavní stránka */
-  body { touch-action: pan-y; }
-  .app.lights { display: block; overflow-y: auto; }
-  .lp-head { display: flex; align-items: center; justify-content: space-between; height: 6.4rem; margin-bottom: 1.2rem; }
-  .lp-title { font-size: 3.4rem; font-weight: 500; padding-left: 0.8rem; }
+  /* Stránka se všemi světly; používá stejné jednotky (rem z viewportu) a posuvníky jako hlavní stránka. */
+  .app.lights { display: flex; flex-direction: column; }
+  .lp-head { display: flex; align-items: center; justify-content: space-between; height: 6.4rem; flex: none; margin-bottom: 1.2rem; }
+  .lp-title { font-size: 3.4rem; font-weight: 500; padding-left: 0.8rem; white-space: nowrap; }
   .lp-title .note { display: inline; margin-left: 1.4rem; font-weight: 400; }
   .btn { display: flex; align-items: center; justify-content: center; height: 6.4rem; padding: 0 3rem; border-radius: 2rem;
-         background: rgba(255, 255, 255, 0.16); font-size: 2.8rem; }
-  .btn:active, .chip:active, .gbtn:active { background: rgba(255, 255, 255, 0.32); }
-  .group { margin-bottom: 1.2rem; padding: 1.2rem 1.4rem 0.4rem; }
-  .g-head { display: flex; align-items: center; margin-bottom: 1rem; }
-  .g-name { flex: 1; font-size: 2.8rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .g-name small { font-size: 1.8rem; font-weight: 400; color: #9eabbd; margin-left: 1rem; }
-  .gbtn { margin-left: 1rem; padding: 0 2rem; height: 5rem; display: flex; align-items: center; border-radius: 1.6rem;
-          background: rgba(255, 255, 255, 0.12); font-size: 2.2rem; }
-  .chips { display: flex; flex-wrap: wrap; margin-right: -1rem; }
-  .chip { width: calc(33.333% - 1rem); margin: 0 1rem 1rem 0; height: 6rem; border-radius: 1.6rem; padding: 0 1rem;
-          background: rgba(255, 255, 255, 0.08); display: flex; align-items: center; font-size: 2rem; overflow: hidden; }
-  .chip.on { background: rgba(255, 210, 74, 0.24); }
-  .chip.gone { opacity: 0.4; }
-  .chip-icon { width: 3.6rem; height: 3.6rem; flex: none; margin-right: 0.6rem; }
-  .chip-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+         background: rgba(255, 255, 255, 0.16); font-size: 2.8rem; white-space: nowrap; }
+  .btn:active { background: rgba(255, 255, 255, 0.32); }
+  #groups { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+  .group { flex: 1 1 0; display: flex; flex-direction: column; margin-bottom: 1.2rem; padding: 1rem 1.2rem 1.2rem; }
+  .group:last-child { margin-bottom: 0; }
+  .g-head { display: flex; align-items: baseline; justify-content: space-between; font-size: 2.6rem; line-height: 3rem; font-weight: 500; padding: 0 0.4rem; }
+  .g-head .note { font-weight: 400; }
+  .sl-row { flex: 1; display: flex; margin-top: 0.8rem; min-height: 0; }
+  .sl-row .lb { max-width: 13rem; }
+  .sl-row .lb-label { white-space: normal; text-align: center; font-size: 1.9rem; line-height: 2.2rem; padding: 0 0.3rem; }
+  .sl-row .lb-icon { width: 5rem; height: 5rem; }
+  .sl-row .lb.all { background: rgba(255, 255, 255, 0.16); }
+  .sl-row .lb.gone { opacity: 0.4; }
 </style>
 </head>
 <body>
@@ -41,77 +38,107 @@
   <div id="groups"></div>
 </div>
 
-<script src="icons.js?v=6"></script>
-<script src="hue.js?v=6"></script>
+<script src="icons.js?v=7"></script>
+<script src="hue.js?v=7"></script>
 <script>
+// Každé světlo je svislý posuvník: ťuknutí zapne/vypne, tažení nastaví jas 0–100 %.
+// Místnost s více světly má navíc posuvník „Vše“; místnosti s jedním světlem a zóny jsou
+// společně v dlaždici „Další“. ?demo=1 = vymyšlená světla, bridge se nevolá.
 (function () {
   'use strict';
   var REFRESH = 5000, IDLE = 5 * 60 * 1000, WAKE_GAP = 5000, CHECK_TIMEOUT = 10000, RETRY = 60 * 1000;
-  var data = null, failedSince = 0, busy = false, shown = '';
+  var DEMO = new URLSearchParams(location.search).get('demo') === '1';
+  if (DEMO) Hue.demo();
+
+  var data = null, shown = '', busy = false, hold = 0, sliders = null, dragSender = null;
   var lastActivity = Date.now(), lastTick = Date.now(), lastLoad = 0, lastHomeTry = 0, homePending = false, homeChecking = false;
 
   function $(id) { return document.getElementById(id); }
   function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
   function status(text, warn) { var el = $('status'); el.textContent = text; el.className = 'note' + (warn ? ' warn' : ''); }
+  function idleText() { return DEMO ? 'ukázková data' : ''; }
+
+  function group(id) { return data.groups.filter(function (g) { return g.id === id; })[0]; }
+  // → {ids: světla, kterých se prvek týká, level: aktuální jas 0–1, on, reachable}
+  function target(kind, id) {
+    if (kind === 'group') {
+      var g = group(id);
+      return g ? { ids: g.lights, level: g.anyOn ? g.bri / 254 : 0, on: g.anyOn, reachable: g.reachable } : null;
+    }
+    var l = data.lights[id];
+    return l ? { ids: [id], level: l.on ? (l.bri === null ? 1 : l.bri / 254) : 0, on: l.on, reachable: l.reachable } : null;
+  }
+
+  function slider(kind, id, label, extra) {
+    var t = target(kind, id);
+    return '<div class="lb' + (t.on ? ' active' : '') + (t.reachable ? '' : ' gone') + (extra ? ' ' + extra : '') + '" data-act="' + kind + '" data-id="' + id + '">' +
+      '<div class="lb-fill" style="height:' + Math.round(t.level * 100) + '%"></div>' +
+      '<div class="lb-pct">' + (t.on ? Hue.levelText(t.level) : '') + '</div>' +
+      '<div class="lb-icon">' + Icons.svg(t.on ? 'zarovka-on' : 'zarovka') + '</div>' +
+      '<div class="lb-label">' + esc(label) + '</div></div>';
+  }
 
   function render() {
-    if (!data) return;
-    var html = '';
+    if (!data || (sliders && sliders.dragging())) return;
+    var html = '', rest = '';
     data.groups.forEach(function (g) {
       if (!g.lights.length) return;
-      html += '<div class="tile group"><div class="g-head">' +
-        '<div class="g-name">' + esc(g.name) + '<small>' + (g.type === 'Zone' ? 'zóna · ' : '') + (g.anyOn ? 'svítí' : 'nesvítí') + '</small></div>' +
-        '<div class="gbtn" data-group="' + g.id + '" data-on="1">Zapnout</div>' +
-        '<div class="gbtn" data-group="' + g.id + '" data-on="0">Vypnout</div></div>';
-      if (g.type === 'Room') {   // světla zóny jsou vypsaná ve svých místnostech
-        html += '<div class="chips">';
-        g.lights.forEach(function (id) {
-          var l = data.lights[id];
-          if (!l) return;
-          html += '<div class="chip' + (l.on ? ' on' : '') + (l.reachable ? '' : ' gone') + '" data-light="' + id + '">' +
-            '<div class="chip-icon">' + Icons.svg(l.on ? 'zarovka-on' : 'zarovka') + '</div><div class="chip-name">' + esc(l.name) + '</div></div>';
-        });
-        html += '</div>';
+      if (g.type === 'Room' && g.lights.length > 1) {
+        html += '<div class="tile group"><div class="g-head"><span>' + esc(g.name) + '</span><span class="note">' + (g.anyOn ? 'svítí' : 'nesvítí') + '</span></div>' +
+          '<div class="sl-row">' + slider('group', g.id, 'Vše', 'all') +
+          g.lights.map(function (id) { return data.lights[id] ? slider('light', id, data.lights[id].name) : ''; }).join('') + '</div></div>';
+      } else {
+        rest += slider('group', g.id, g.name + (g.type === 'Zone' ? ' (zóna)' : ''));
       }
-      html += '</div>';
     });
+    if (rest) html += '<div class="tile group"><div class="g-head"><span>Další</span></div><div class="sl-row">' + rest + '</div></div>';
     if (html !== shown) { shown = html; $('groups').innerHTML = html; }
   }
 
   function load() {
     lastLoad = Date.now();
-    return Hue.snapshot().then(function (d) {
-      data = d; failedSince = 0; status('', false); render();
-    }, function (e) {
-      if (!failedSince) failedSince = Date.now();
-      status(String(e.message || e), true);
+    if (data && (Date.now() < hold || (dragSender && dragSender.active()))) return;   // během posílání nečíst starý stav
+    Hue.snapshot().then(function (d) { data = d; if (!busy) status(idleText(), false); render(); },
+      function (e) { status(String(e.message || e), true); });
+  }
+
+  // ťuknutí = zapnout / vypnout (při zapnutí si světlo vezme svůj poslední jas)
+  function tap(el) {
+    var kind = el.getAttribute('data-act'), id = el.getAttribute('data-id'), t = data && target(kind, id);
+    if (!t || busy) return;
+    var on = !t.on;
+    busy = true; hold = Date.now() + 2000; status('posílám…', false);
+    (kind === 'group' ? Hue.setGroup(id, on) : Hue.setLight(id, on)).then(function () {
+      busy = false;
+      Hue.patchLights(data, t.ids, { on: on });
+      status(idleText(), false); render();
+      hold = Date.now() + 800; setTimeout(load, 900);
+    }, function (e) { busy = false; status(String(e.message || e), true); });
+  }
+
+  function sender(kind, id) {
+    return Hue.LatestSender(function (level) { return kind === 'group' ? Hue.setGroupLevel(id, level) : Hue.setLightLevel(id, level); }, 600);
+  }
+  function move(el, level) {
+    if (!dragSender) dragSender = sender(el.getAttribute('data-act'), el.getAttribute('data-id'));
+    hold = Date.now() + 3000;
+    dragSender.push(level);
+  }
+  function end(el, level) {
+    var kind = el.getAttribute('data-act'), id = el.getAttribute('data-id');
+    var s = dragSender || sender(kind, id), t = data && target(kind, id);
+    dragSender = null;
+    s.push(level);
+    if (t) Hue.patchLights(data, t.ids, Hue.levelBody(level));   // hned ukázat nový stav
+    shown = ''; hold = Date.now() + 3000;
+    render();
+    s.idle(function (err) {
+      if (err) status(String(err.message || err), true);
+      hold = Date.now() + 1000; setTimeout(load, 1100);
     });
   }
 
-  function act(job, patch) {
-    if (busy) return;
-    busy = true; status('posílám…', false);
-    job.then(function () { busy = false; patch(); render(); status('', false); setTimeout(load, 800); },
-      function (e) { busy = false; status(String(e.message || e), true); });
-  }
-
-  $('groups').addEventListener('click', function (e) {
-    var t = e.target.closest('[data-light], [data-group]');
-    if (!t || !data) return;
-    if (t.hasAttribute('data-light')) {
-      var id = t.getAttribute('data-light'), on = !data.lights[id].on;
-      act(Hue.setLight(id, on), function () { data.lights[id].on = on; });
-    } else {
-      var gid = t.getAttribute('data-group'), gon = t.getAttribute('data-on') === '1';
-      act(Hue.setGroup(gid, gon), function () {
-        data.groups.forEach(function (g) {
-          if (g.id !== gid) return;
-          g.anyOn = gon;
-          g.lights.forEach(function (l) { if (data.lights[l] && data.lights[l].reachable) data.lights[l].on = gon; });
-        });
-      });
-    }
-  });
+  sliders = Hue.bindSliders($('groups'), { tap: tap, move: move, end: end, cancel: function () { dragSender = null; shown = ''; render(); } });
 
   // Návrat domů: tlačítkem nebo po 5 minutách nečinnosti. Odchází se jen na dostupný cíl
   // (chybová stránka kiosku by na tabletu zůstala viset); jinak se to zkusí znovu po probuzení.

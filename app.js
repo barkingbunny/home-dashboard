@@ -436,13 +436,15 @@
 
   // ---------------------------------------------------------------- světla (Philips Hue)
   // Každé tlačítko je zároveň svislý posuvník: ťuknutí = scéna (u lampy zapnout/vypnout),
-  // tažení prstem nahoru a dolů = jas. Výplň odspodu ukazuje aktuální jas.
+  // tažení prstem nahoru a dolů = jas od 0 (vypnuto) do 100 %. Výplň odspodu ukazuje aktuální jas.
 
   var ACTIVE_KEY = 'hd.lights.active';   // index naposledy zvolené scény (bridge ji sám nehlásí)
-  var lightsMsg = null, lightsHtml = '', lightsBusy = false, lightsInfo = '', drag = null;
+  var lightsMsg = null, lightsHtml = '', lightsBusy = false, lightsInfo = '';
+  var sliders = null, dragSender = null, lightsHold = 0;
 
+  // Dokud se posílají příkazy, stav z bridge se nestahuje – vrátil by ještě starý jas.
   function loadLights() {
-    if (DEMO) return Promise.resolve(demoLights());
+    if (lights.data && (Date.now() < lightsHold || (dragSender && dragSender.active()))) return Promise.resolve(lights.data);
     return Hue.snapshot();
   }
 
@@ -459,12 +461,10 @@
     };
   }
 
-  function pct(level) { return Math.max(1, Math.round(level * 100)) + ' %'; }
-
   function renderLights() {
-    if (drag && drag.moved) return;   // pod prstem nepřekreslovat
+    if (sliders && sliders.dragging()) return;   // pod prstem nepřekreslovat
     var L = CONFIG.lights, el = $('spare'), html;
-    if (!DEMO && !Hue.configured()) {
+    if (!Hue.configured()) {
       html = '<div class="tile room"><div class="room-head"><span>' + esc(L.title) + '</span><span class="note">světla nejsou nastavena</span></div></div>';
     } else {
       var st = lightsState(), d = st.d, room = st.room;
@@ -478,16 +478,16 @@
         var on = st.active === i;
         html += '<div class="lb' + (on ? ' active' : '') + '" data-act="preset" data-i="' + i + '">' +
           '<div class="lb-fill" style="height:' + (on ? Math.round(st.roomLevel * 100) : 0) + '%"></div>' +
-          '<div class="lb-pct">' + (on ? pct(st.roomLevel) : '') + '</div>' +
+          '<div class="lb-pct">' + (on ? Hue.levelText(st.roomLevel) : '') + '</div>' +
           '<div class="lb-icon">' + Icons.svg(p.icon) + '</div><div class="lb-label">' + esc(p.label) + '</div></div>';
       });
-      html += '<div class="lb off' + (room && !room.anyOn ? ' active' : '') + '" data-act="off"><div class="lb-pct"></div>' +
+      html += '<div class="lb off' + (room && !room.anyOn ? ' active' : '') + '" data-act="off" data-noslide><div class="lb-pct"></div>' +
         '<div class="lb-icon">' + Icons.svg('vypnout') + '</div><div class="lb-label">Vypnout</div></div>' +
         '</div></div>';
       var lampOn = !!(st.lamp && st.lamp.on);
       html += '<div class="tile lamp lb' + (lampOn ? ' active' : '') + (offline ? ' dim' : '') + '" data-act="lamp">' +
         '<div class="lb-fill" style="height:' + Math.round(st.lampLevel * 100) + '%"></div>' +
-        '<div class="lb-pct">' + (lampOn ? pct(st.lampLevel) : '') + '</div>' +
+        '<div class="lb-pct">' + (lampOn ? Hue.levelText(st.lampLevel) : '') + '</div>' +
         '<div class="lb-icon">' + Icons.svg(lampOn ? 'zarovka-on' : 'zarovka') + '</div>' +
         '<div class="lb-label">' + esc(L.lamp.label) + '</div>' +
         '<div class="note">' + (!st.lamp ? '–' : !st.lamp.reachable ? 'nedostupná' : lampOn ? 'svítí' : 'nesvítí') + '</div></div>';
@@ -501,12 +501,33 @@
     if (ms) setTimeout(function () { lightsMsg = null; renderLights(); }, ms);
   }
 
-  function lightsRun(job) {
+  // ťuknutí: scéna / vypnout / lampa zapnout-vypnout
+  function lightsTap(el) {
+    var L = CONFIG.lights, st = lightsState(), d = st.d, room = st.room, job;
+    var act = el.getAttribute('data-act'), i = Number(el.getAttribute('data-i'));
+    if (lightsBusy || !d) return;
+    if (act === 'lamp') {
+      if (!st.lamp) return;
+      var on = !st.lamp.on;
+      job = Hue.setLight(st.lampId, on).then(function () { Hue.patchLights(d, [st.lampId], { on: on }); return 'lampa ' + (on ? 'zap' : 'vyp'); });
+    } else if (!room) {
+      return;
+    } else if (act === 'off') {
+      job = Hue.setGroup(room.id, false).then(function () { Hue.patchLights(d, room.lights, { on: false }); return 'vypnuto'; });
+    } else {
+      job = Hue.applyPreset(room.id, L.presets[i]).then(function (how) {
+        Hue.patchLights(d, room.lights, { on: true });
+        store.set(ACTIVE_KEY, i);
+        return L.presets[i].label + ': ' + how;
+      });
+    }
     lightsBusy = true;
+    lightsHold = Date.now() + 2000;
     lightsNote('posílám…', false);
     job.then(function (info) {
       lightsBusy = false; lightsMsg = null; lightsInfo = hm(Date.now()) + ' ' + info;
       renderLights();
+      lightsHold = Date.now() + 800;
       setTimeout(function () { lights.start(); }, 900);   // skutečný stav z bridge
     }, function (e) {
       lightsBusy = false;
@@ -514,95 +535,51 @@
     });
   }
 
-  // ťuknutí: scéna / vypnout / lampa zapnout-vypnout
-  function lightsAction(act, i) {
-    var L = CONFIG.lights, st = lightsState(), d = st.d, room = st.room;
-    if (lightsBusy || DEMO || !d) return;
-    if (act === 'lamp') {
-      if (!st.lamp) return;
-      var on = !st.lamp.on;
-      lightsRun(Hue.setLight(st.lampId, on).then(function () { st.lamp.on = on; return 'lampa ' + (on ? 'zap' : 'vyp'); }));
-    } else if (act === 'off') {
-      if (!room) return;
-      lightsRun(Hue.setGroup(room.id, false).then(function () {
-        room.anyOn = false;
-        room.lights.forEach(function (id) { if (d.lights[id]) d.lights[id].on = false; });
-        return 'vypnuto';
-      }));
-    } else if (room) {
-      lightsRun(Hue.applyPreset(room.id, L.presets[i]).then(function (how) {
-        room.anyOn = true;
-        store.set(ACTIVE_KEY, i);
-        return L.presets[i].label + ': ' + how;
-      }));
+  // Odesílač jasu pro jedno tažení. U jiné než právě aktivní scény se nejdřív zapne scéna.
+  function lightsSender(act, i) {
+    var applied = false;
+    return Hue.LatestSender(function (level) {
+      var L = CONFIG.lights, st = lightsState();
+      if (!st.d) return Promise.reject(new Error('stav světel není načtený'));
+      if (act === 'lamp') return st.lampId ? Hue.setLightLevel(st.lampId, level) : Promise.reject(new Error('lampa nenalezena'));
+      if (!st.room) return Promise.reject(new Error('místnost nenalezena'));
+      if (level === 0 || applied || st.active === i) return Hue.setGroupLevel(st.room.id, level);
+      return Hue.applyPreset(st.room.id, L.presets[i]).then(function () { applied = true; return Hue.setGroupLevel(st.room.id, level); });
+    }, 600);
+  }
+
+  function lightsMove(el, level) {
+    if (!dragSender) dragSender = lightsSender(el.getAttribute('data-act'), Number(el.getAttribute('data-i')));
+    lightsHold = Date.now() + 3000;
+    dragSender.push(level);
+  }
+
+  function lightsEnd(el, level) {
+    var act = el.getAttribute('data-act'), i = Number(el.getAttribute('data-i'));
+    var sender = dragSender || lightsSender(act, i), st = lightsState();
+    dragSender = null;
+    sender.push(level);
+    // hned ukázat nový stav, na bridge se nečeká
+    if (st.d && act === 'lamp' && st.lampId) Hue.patchLights(st.d, [st.lampId], Hue.levelBody(level));
+    if (st.d && act === 'preset' && st.room) {
+      Hue.patchLights(st.d, st.room.lights, Hue.levelBody(level));
+      if (level > 0) store.set(ACTIVE_KEY, i);
     }
-  }
-
-  // puštění prstu po tažení: nastavit jas (level 0–1); u jiné než aktivní scény se scéna nejdřív zapne
-  function lightsLevel(act, i, level) {
-    var L = CONFIG.lights, st = lightsState(), room = st.room;
-    var bri = Math.max(1, Math.round(level * 254));
-    if (lightsBusy || DEMO || !st.d) { renderLights(); return; }
-    if (act === 'lamp') {
-      if (!st.lamp) return;
-      lightsRun(Hue.setLightBri(st.lampId, bri).then(function () { st.lamp.on = true; if (st.lamp.bri !== null) st.lamp.bri = bri; return 'lampa jas ' + bri; }));
-    } else if (act === 'preset' && room) {
-      var first = st.active === i ? Promise.resolve() : Hue.applyPreset(room.id, L.presets[i]);
-      lightsRun(first.then(function () { return Hue.setGroupBri(room.id, bri); }).then(function () {
-        room.anyOn = true; room.bri = bri;
-        store.set(ACTIVE_KEY, i);
-        return L.presets[i].label + ' jas ' + bri;
-      }));
-    }
-  }
-
-  // průběžné posílání jasu během tažení (nejvýš jednou za 700 ms, bridge víc nestíhá)
-  function lightsLive() {
-    var st = lightsState(), now = Date.now();
-    if (!drag || DEMO || !st.d || now - drag.sent < 700) return;
-    var bri = Math.max(1, Math.round(drag.level * 254)), job = null;
-    if (drag.act === 'lamp' && st.lamp && st.lamp.on) job = Hue.setLightBri(st.lampId, bri);
-    else if (drag.act === 'preset' && st.room && st.active === drag.i) job = Hue.setGroupBri(st.room.id, bri);
-    if (job) { drag.sent = now; job.catch(function () { }); }
-  }
-
-  function dragLevel(el, y) {
-    var r = el.getBoundingClientRect();
-    return Math.min(1, Math.max(0.02, 1 - (y - r.top) / r.height));
+    lightsHtml = '';
+    lightsHold = Date.now() + 3000;
+    renderLights();
+    sender.idle(function (err) {
+      lightsInfo = hm(Date.now()) + ' ' + (act === 'lamp' ? 'lampa' : CONFIG.lights.presets[i].label) + ' ' + Hue.levelText(level) + (err ? ' – ' + err.message : '');
+      if (err) lightsNote(String(err.message || err), true, 4000);
+      lightsHold = Date.now() + 1000;
+      setTimeout(function () { lights.start(); }, 1100);
+    });
   }
 
   function bindLights() {
-    var el = $('spare');
-    el.addEventListener('touchstart', function (e) {
-      var b = e.target.closest('[data-act]');
-      if (!b || e.touches.length !== 1) { drag = null; return; }
-      drag = { el: b, act: b.getAttribute('data-act'), i: Number(b.getAttribute('data-i')), y0: e.touches[0].clientY, moved: false, level: 0, sent: 0 };
-    }, { passive: true });
-    el.addEventListener('touchmove', function (e) {
-      if (!drag || drag.act === 'off') return;
-      var y = e.touches[0].clientY;
-      if (!drag.moved && Math.abs(y - drag.y0) < 14) return;   // malý pohyb je pořád ťuknutí
-      e.preventDefault();
-      drag.moved = true;
-      drag.level = dragLevel(drag.el, y);
-      drag.el.classList.add('dragging');
-      var fill = drag.el.querySelector('.lb-fill'), label = drag.el.querySelector('.lb-pct');
-      if (fill) fill.style.height = Math.round(drag.level * 100) + '%';
-      if (label) label.textContent = pct(drag.level);
-      lightsLive();
-    }, { passive: false });
-    el.addEventListener('touchend', function (e) {
-      if (!drag) return;
-      e.preventDefault();   // jinak by po dotyku přišlo ještě „click“
-      var d = drag;
-      drag = null;
-      lightsHtml = '';
-      if (d.moved) lightsLevel(d.act, d.i, d.level); else lightsAction(d.act, d.i);
-    }, { passive: false });
-    el.addEventListener('touchcancel', function () { drag = null; lightsHtml = ''; renderLights(); });
-    el.addEventListener('click', function (e) {   // myš na počítači
-      var b = e.target.closest('[data-act]');
-      if (b) lightsAction(b.getAttribute('data-act'), Number(b.getAttribute('data-i')));
+    sliders = Hue.bindSliders($('spare'), {
+      tap: lightsTap, move: lightsMove, end: lightsEnd,
+      cancel: function () { dragSender = null; lightsHtml = ''; renderLights(); }
     });
   }
 
@@ -713,18 +690,15 @@
     }
     return { h: h, d: d };
   }
-  function demoLights() {
-    return { groups: [{ id: '1', name: 'Obývací pokoj', type: 'Room', anyOn: true, allOn: false, bri: 150, lights: ['1', '2'] }],
-      lights: { '1': { name: 'Lampa gauc', on: true, reachable: true, bri: 150 }, '2': { name: 'Obyvak stred', on: false, reachable: true, bri: 254 } } };
-  }
   function demoWater() { return { max: 39.75, maxT: Date.now() - 3 * HOUR, end: Date.now() - 95 * MIN, n: 241 }; }
 
   // ---------------------------------------------------------------- start
 
+  if (DEMO) Hue.demo();   // ukázková domácnost v paměti, bridge se nevolá
   var forecast = new Source('hd.forecast', CONFIG.interval.forecast, loadForecast, renderForecast);
   var water = new Source('hd.water', CONFIG.interval.water, loadWater, renderLinks);
   var lights = new Source('hd.lights', CONFIG.lights.interval, loadLights, renderLights);
-  if (!DEMO && !Hue.configured()) lights.tick = lights.wake = lights.online = function () { };   // bez nastavení se bridge nevolá
+  if (!Hue.configured()) lights.tick = lights.wake = lights.online = function () { };   // bez nastavení se bridge nevolá
 
   $('version').textContent = 'v' + VERSION + (DEMO ? ' · ukázková data' : '');
   if (DEBUG) $('debug').hidden = false;

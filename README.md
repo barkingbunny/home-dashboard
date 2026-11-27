@@ -11,7 +11,7 @@ Stránka běží na GitHub Pages: <https://barkingbunny.github.io/home-dashboard
 - předpověď na dnešek po hodinách, ťuknutím výhled na 5 dalších dní (Open-Meteo)
 - digitální hodiny
 - světla (Philips Hue): obývák se scénami Den / Čtení / Relax / Vypnout a lampa u gauče;
-  ťuknutí = scéna nebo zapnout/vypnout, tažení prstem po tlačítku nahoru a dolů = jas;
+  ťuknutí = scéna nebo zapnout/vypnout, tažení prstem po tlačítku nahoru a dolů = jas 0–100 %;
   stránka `svetla.html` se všemi místnostmi
 - rozcestník: lišta Teploty vody s maximem čidla Měřák TUV z poslední dávky (ThingSpeak) a odkaz Světla
 
@@ -26,7 +26,7 @@ Stránka běží na GitHub Pages: <https://barkingbunny.github.io/home-dashboard
 | `svatky.js` | český občanský kalendář, 366 dní |
 | `version.json` | číslo nasazené verze |
 | `hue.js` | volání Hue Bridge (místní rozhraní v1) |
-| `svetla.html` | všechny místnosti a světla |
+| `svetla.html` | všechny místnosti a světla, každé jako posuvník jasu |
 | `svetla-nastaveni.html` | jednorázové nastavení: `?bridge=<IP>`, pak stisk tlačítka na bridgi |
 | `ikony.html` | přehled všech ikon a slov (jen pro kontrolu) |
 | `robots.txt` | zákaz indexování |
@@ -71,7 +71,7 @@ Chování, se kterým kód počítá:
 
 - `?debug=1` – panel s rozměry viewportu, verzí, stavem zdrojů dat a zachycenými chybami
 - `?debug=1&reloadAfter=2` – zkrátí hranici 12 hodin pro znovunačtení na 2 minuty
-- `?demo=1` – ukázková data bez sítě
+- `?demo=1` – ukázková data bez sítě; platí i pro `svetla.html` (vymyšlená světla, bridge se nevolá)
 
 Místní spuštění: `python -m http.server` v kořeni repozitáře a otevřít `http://localhost:8000/`.
 
