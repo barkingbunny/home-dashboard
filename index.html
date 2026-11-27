@@ -9,7 +9,7 @@
 <!-- Číslo verze je na dvou místech: zde (APP_VERSION) a ve version.json. Měň vždy obě.
      Odkazy na CSS a JS dostanou ?v=<verze>, aby je prohlížeč nepodal ze staré cache. -->
 <script>
-var APP_VERSION = '5';
+var APP_VERSION = '6';
 document.write('<link rel="stylesheet" href="style.css?v=' + APP_VERSION + '">');
 </script>
 </head>
@@ -17,8 +17,12 @@ document.write('<link rel="stylesheet" href="style.css?v=' + APP_VERSION + '">')
 <div class="app" id="app">
 
   <header class="top">
-    <div class="top-date" id="date">&nbsp;</div>
-    <div class="top-name" id="nameday">&nbsp;</div>
+    <div class="top-left">
+      <div class="top-dow" id="dow">&nbsp;</div>
+      <div class="top-date" id="date">&nbsp;</div>
+      <div class="top-name" id="nameday">&nbsp;</div>
+    </div>
+    <div class="clock-time" id="clock">--:--</div>
   </header>
 
   <section class="tile forecast" id="forecast" role="button" aria-expanded="false">
@@ -31,12 +35,6 @@ document.write('<link rel="stylesheet" href="style.css?v=' + APP_VERSION + '">')
     <div class="fc-foot">
       <span class="note" id="fcNote"></span>
       <span class="fc-more" id="fcMore">další dny ▾</span>
-    </div>
-  </section>
-
-  <section class="row2">
-    <div class="tile clock">
-      <div class="clock-time" id="clock">--:--</div>
     </div>
   </section>
 

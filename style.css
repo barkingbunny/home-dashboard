@@ -36,7 +36,7 @@ body {
   height: 96rem;
   padding: 1.2rem;
   display: grid;
-  grid-template-rows: 4.6rem 26rem 19rem 1fr 7.5rem 2rem;
+  grid-template-rows: 12.6rem 26rem 1fr 7.5rem 2rem;
   grid-row-gap: 1.2rem;
   row-gap: 1.2rem;
   background: linear-gradient(165deg, #17233a 0%, #0c111b 55%, #07090e 100%);
@@ -68,20 +68,28 @@ body {
 
 .ic { display: block; width: 100%; height: 100%; }
 
-/* ---- horní řádek ---- */
+/* ---- horní řádek: vlevo den, datum a svátek, vpravo hodiny ---- */
 
 .top {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 0 0.8rem;
-  font-size: 3rem;
-  line-height: 1;
   white-space: nowrap;
 }
-.top-date { font-weight: 500; }
-.top-name { color: #c3cddb; font-weight: 300; overflow: hidden; text-overflow: ellipsis; padding-left: 1.5rem; }
-.top-name.long { font-size: 2.3rem; }
+.top-left { flex: 1; min-width: 0; padding-right: 1.5rem; }
+.top-dow { font-size: 4.6rem; line-height: 4.8rem; font-weight: 500; }
+.top-date { font-size: 4.6rem; line-height: 4.8rem; font-weight: 300; overflow: hidden; }
+.top-name { font-size: 2.6rem; line-height: 3rem; color: #c3cddb; font-weight: 300; overflow: hidden; }
+.clock-time {
+  flex: none;
+  font-family: "sans-serif-thin", Roboto, "Segoe UI", system-ui, sans-serif;
+  font-size: 11.6rem;
+  line-height: 1;
+  font-weight: 100;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
 
 /* ---- předpověď ---- */
 
@@ -151,7 +159,7 @@ body {
   position: absolute;
   left: 1.2rem;
   right: 1.2rem;
-  top: 34.2rem; /* padding + horní řádek + předpověď + 2 mezery */
+  top: 42.2rem; /* padding + horní řádek + předpověď + 2 mezery */
   background: #232d3f;
   border-radius: 2.4rem;
   padding: 0.8rem 2rem 1rem;
@@ -177,20 +185,6 @@ body {
 .day-rain { width: 11rem; text-align: right; font-size: 2.3rem; color: #6cbcff; }
 .day-rain.zero { color: #6b7686; }
 
-/* ---- hodiny ---- */
-
-.row2 { display: grid; grid-template-columns: 1fr; min-height: 0; }
-
-.clock { display: flex; align-items: center; justify-content: center; padding: 0; }
-.clock-time {
-  font-family: "sans-serif-thin", Roboto, "Segoe UI", system-ui, sans-serif;
-  font-size: 17rem;
-  line-height: 1;
-  font-weight: 100;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: -0.02em;
-}
-
 /* ---- volné místo a rozcestník ---- */
 
 .spare {
@@ -207,6 +201,8 @@ body {
 .room-head .note { font-weight: 400; }
 .room-btns { flex: 1; display: flex; margin-top: 0.8rem; min-height: 0; }
 .lb {
+  position: relative;
+  overflow: hidden;
   flex: 1 1 0;
   margin-right: 1rem;
   border-radius: 1.8rem;
@@ -214,17 +210,22 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-end;
+  padding-bottom: 1.6rem;
 }
 .lb:last-child { margin-right: 0; }
-.lb:active, .lamp:active { background: rgba(255, 255, 255, 0.28); }
+.lb.off { justify-content: center; padding-bottom: 0; }
+.lb.off:active { background: rgba(255, 255, 255, 0.28); }
 .lb.off.active { background: rgba(0, 0, 0, 0.28); }
-.lb-icon { width: 6.4rem; height: 6.4rem; }
-.lb-label { font-size: 2.3rem; line-height: 3rem; margin-top: 0.4rem; white-space: nowrap; }
-.lamp { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 1rem 0.4rem; text-align: center; }
-.lamp.on { background: rgba(255, 210, 74, 0.22); }
-.lamp-icon { width: 7rem; height: 7rem; }
-.lamp-label { font-size: 2.1rem; line-height: 2.5rem; margin-top: 0.6rem; }
+/* výplň odspodu = jas; táhne se prstem */
+.lb-fill { position: absolute; left: 0; right: 0; bottom: 0; height: 0; background: rgba(255, 210, 74, 0.3); }
+.lb.dragging .lb-fill { background: rgba(255, 210, 74, 0.5); }
+.lb-pct { position: absolute; top: 1.2rem; left: 0; right: 0; text-align: center; font-size: 2.2rem; line-height: 2.6rem; color: #ffe08a; }
+.lb-icon { position: relative; width: 6.4rem; height: 6.4rem; }
+.lb-label { position: relative; font-size: 2.3rem; line-height: 3rem; margin-top: 0.4rem; white-space: nowrap; }
+.lamp { margin-right: 0; border-radius: 2.4rem; background: rgba(255, 255, 255, 0.09); padding: 0 0.4rem 1.6rem; text-align: center; }
+.lamp .lb-label { white-space: normal; font-size: 2.1rem; line-height: 2.5rem; }
+.lamp .note { position: relative; }
 
 /* rozcestník: nízké lišty, dvě vedle sebe */
 .links {
@@ -269,8 +270,8 @@ body {
   position: absolute;
   left: 0;
   right: 0;
-  top: 54.4rem;      /* přes dlaždice světel */
-  height: 20rem;
+  top: 22rem;        /* přes předpověď, světla zůstávají ovladatelná */
+  height: 18rem;
   margin: 0;
   padding: 0.4rem 1rem;
   overflow: hidden;

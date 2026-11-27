@@ -38,7 +38,8 @@
       var groups = [], lights = {};
       Object.keys(res[1]).forEach(function (id) {
         var l = res[1][id];
-        lights[id] = { name: l.name, on: !!(l.state && l.state.on && l.state.reachable !== false), reachable: !l.state || l.state.reachable !== false };
+        lights[id] = { name: l.name, on: !!(l.state && l.state.on && l.state.reachable !== false), reachable: !l.state || l.state.reachable !== false,
+          bri: l.state && typeof l.state.bri === 'number' ? l.state.bri : null };   // jas 1–254, null = světlo jas neumí
       });
       Object.keys(res[0]).forEach(function (id) {
         var g = res[0][id];
@@ -46,8 +47,15 @@
         // Bridge hlásí „svítí“ i u světla vypnutého vypínačem na zdi (nedostupného), proto se
         // stav místnosti počítá jen z dostupných světel.
         var ids = g.lights || [];
-        var lit = ids.filter(function (l) { return lights[l] && lights[l].on; }).length;
-        groups.push({ id: id, name: g.name, type: g.type, anyOn: lit > 0, allOn: ids.length > 0 && lit === ids.length, lights: ids });
+        var lit = 0, briSum = 0, briN = 0;
+        ids.forEach(function (l) {
+          if (!lights[l] || !lights[l].on) return;
+          lit++;
+          if (lights[l].bri !== null) { briSum += lights[l].bri; briN++; }
+        });
+        // bri = průměrný jas rozsvícených světel (1–254), 254 když žádné jas neumí
+        groups.push({ id: id, name: g.name, type: g.type, anyOn: lit > 0, allOn: ids.length > 0 && lit === ids.length,
+          bri: briN ? Math.round(briSum / briN) : 254, lights: ids });
       });
       return { groups: groups, lights: lights };
     });
@@ -84,6 +92,9 @@
 
   function setGroup(groupId, on) { return call('/groups/' + groupId + '/action', 'PUT', { on: !!on }); }
   function setLight(lightId, on) { return call('/lights/' + lightId + '/state', 'PUT', { on: !!on }); }
+  // jas 1–254; světlo nebo místnost se přitom rozsvítí
+  function setGroupBri(groupId, bri) { return call('/groups/' + groupId + '/action', 'PUT', { on: true, bri: bri, transitiontime: 2 }); }
+  function setLightBri(lightId, bri) { return call('/lights/' + lightId + '/state', 'PUT', { on: true, bri: bri, transitiontime: 2 }); }
 
   function findGroup(snap, name) {
     var n = norm(name), hit = null;
@@ -99,6 +110,7 @@
   global.Hue = {
     configured: function () { return !!config(); },
     snapshot: snapshot, applyPreset: applyPreset, setGroup: setGroup, setLight: setLight,
+    setGroupBri: setGroupBri, setLightBri: setLightBri,
     findGroup: findGroup, findLight: findLight, norm: norm
   };
 })(window);

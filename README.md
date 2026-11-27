@@ -11,6 +11,7 @@ Stránka běží na GitHub Pages: <https://barkingbunny.github.io/home-dashboard
 - předpověď na dnešek po hodinách, ťuknutím výhled na 5 dalších dní (Open-Meteo)
 - digitální hodiny
 - světla (Philips Hue): obývák se scénami Den / Čtení / Relax / Vypnout a lampa u gauče;
+  ťuknutí = scéna nebo zapnout/vypnout, tažení prstem po tlačítku nahoru a dolů = jas;
   stránka `svetla.html` se všemi místnostmi
 - rozcestník: lišta Teploty vody s maximem čidla Měřák TUV z poslední dávky (ThingSpeak) a odkaz Světla
 
