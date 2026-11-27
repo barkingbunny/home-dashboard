@@ -11,7 +11,9 @@ Stránka běží na GitHub Pages: <https://barkingbunny.github.io/home-dashboard
 - předpověď na dnešek po hodinách, ťuknutím výhled na 5 dalších dní (Open-Meteo)
 - digitální hodiny
 - aktuální počasí
-- rozcestník: dlaždice Teploty vody s maximem čidla Měřák TUV z poslední dávky (ThingSpeak)
+- světla (Philips Hue): obývák se scénami Den / Čtení / Relax / Vypnout a lampa u gauče;
+  stránka `svetla.html` se všemi místnostmi
+- rozcestník: lišta Teploty vody s maximem čidla Měřák TUV z poslední dávky (ThingSpeak) a odkaz Světla
 
 ## Soubory
 
@@ -23,6 +25,9 @@ Stránka běží na GitHub Pages: <https://barkingbunny.github.io/home-dashboard
 | `icons.js` | ikony počasí (SVG) a tabulka kód WMO → ikona + české slovo |
 | `svatky.js` | český občanský kalendář, 366 dní |
 | `version.json` | číslo nasazené verze |
+| `hue.js` | volání Hue Bridge (místní rozhraní v1) |
+| `svetla.html` | všechny místnosti a světla |
+| `svetla-nastaveni.html` | jednorázové nastavení: `?bridge=<IP>`, pak stisk tlačítka na bridgi |
 | `ikony.html` | přehled všech ikon a slov (jen pro kontrolu) |
 | `robots.txt` | zákaz indexování |
 
@@ -40,6 +45,11 @@ Odkud jsou data:
 | předpověď | `api.open-meteo.com` | 30 min |
 | aktuální počasí | `api.open-meteo.com` | 10 min |
 | teploty vody | `api.thingspeak.com`, kanál 3529108, `field8` | 5 min |
+| světla | Hue Bridge v domácí síti | 15 s |
+
+Adresa bridge a přístupový klíč jsou jen v `localStorage` tabletu, do repozitáře nepatří.
+Rozhraní v2 bridge z prohlížeče volat nejde (nepovolí hlavičku s klíčem), proto v1.
+Názvy místnosti, lampy a scén jsou v `CONFIG.lights` v `app.js`.
 
 Chování, se kterým kód počítá:
 
@@ -54,7 +64,7 @@ Chování, se kterým kód počítá:
 
 ## Nasazení nové verze
 
-1. Zvyš číslo verze na obou místech: `version.json` a `APP_VERSION` v `index.html`.
+1. Zvyš číslo verze na obou místech: `version.json` a `APP_VERSION` v `index.html` (a `?v=` v `svetla.html`).
 2. Commit a push do `main`. Tablet si novou verzi načte při dalším probuzení displeje;
    číslo verze je vidět vpravo dole.
 

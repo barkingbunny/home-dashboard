@@ -43,7 +43,11 @@
       Object.keys(res[0]).forEach(function (id) {
         var g = res[0][id];
         if (g.type !== 'Room' && g.type !== 'Zone') return;
-        groups.push({ id: id, name: g.name, type: g.type, anyOn: !!(g.state && g.state.any_on), allOn: !!(g.state && g.state.all_on), lights: g.lights || [] });
+        // Bridge hlásí „svítí“ i u světla vypnutého vypínačem na zdi (nedostupného), proto se
+        // stav místnosti počítá jen z dostupných světel.
+        var ids = g.lights || [];
+        var lit = ids.filter(function (l) { return lights[l] && lights[l].on; }).length;
+        groups.push({ id: id, name: g.name, type: g.type, anyOn: lit > 0, allOn: ids.length > 0 && lit === ids.length, lights: ids });
       });
       return { groups: groups, lights: lights };
     });
