@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="robots" content="noindex, nofollow">
+<title>Světla – nastavení</title>
+<style>
+  body { margin: 0; padding: 20px; background: #0c111b; color: #f1f4f9; font: 20px/1.4 Roboto, "Segoe UI", sans-serif; }
+  h1 { font-size: 26px; font-weight: 500; margin: 0 0 14px; }
+  .box { background: rgba(255,255,255,.09); border-radius: 16px; padding: 16px 20px; margin-bottom: 14px; }
+  .ok { color: #8fe3a0; } .bad { color: #ffc46b; } .dim { color: #9eabbd; font-size: 17px; }
+  a.btn, button { display: inline-block; margin: 6px 10px 0 0; padding: 14px 26px; border: 0; border-radius: 12px;
+    background: rgba(255,255,255,.16); color: #fff; font: inherit; text-decoration: none; }
+  ul { margin: 6px 0 0; padding-left: 22px; }
+</style>
+</head>
+<body>
+<h1>Světla – jednorázové nastavení</h1>
+<div class="box" id="step1">Zjišťuji spojení s Hue Bridge…</div>
+<div class="box" id="step2"></div>
+<div class="box" id="step3" hidden></div>
+<a class="btn" href="./">← Domů</a>
+<button id="forget">Zapomenout klíč</button>
+
+<script>
+// Adresa bridge a přístupový klíč se ukládají jen do localStorage tohoto zařízení, nikdy do repozitáře.
+// Adresa se zadá jednou v parametru ?bridge=<IP>. Klíč vznikne po stisku tlačítka na bridgi.
+(function () {
+  var KEY = 'hd.hue';
+  function load() { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) { return {}; } }
+  function save(v) { try { localStorage.setItem(KEY, JSON.stringify(v)); } catch (e) { } }
+  function $(id) { return document.getElementById(id); }
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function call(path, opts) {
+    var ac = new AbortController(), t = setTimeout(function () { ac.abort(); }, 8000);
+    opts = opts || {}; opts.signal = ac.signal; opts.cache = 'no-store';
+    return fetch('https://' + cfg.ip + '/api' + path, opts).then(function (r) { return r.json(); })
+      .then(function (j) { clearTimeout(t); return j; }, function (e) { clearTimeout(t); throw e; });
+  }
+
+  var cfg = load();
+  var ip = new URLSearchParams(location.search).get('bridge');
+  if (ip && /^[0-9.]{7,15}$/.test(ip) && ip !== cfg.ip) { cfg = { ip: ip }; save(cfg); }
+  if (ip) history.replaceState(null, '', location.pathname);   // adresu nenechávat v URL
+
+  $('forget').addEventListener('click', function () { cfg = { ip: cfg.ip }; save(cfg); location.reload(); });
+
+  if (!cfg.ip) {
+    $('step1').innerHTML = '<span class="bad">Není nastavena adresa bridge.</span><div class="dim">Otevři tuto stránku s parametrem ?bridge=&lt;IP adresa&gt;.</div>';
+    return;
+  }
+
+  var timer = null;
+  function showLights() {
+    Promise.all([call('/' + cfg.key + '/groups'), call('/' + cfg.key + '/lights')]).then(function (res) {
+      var groups = res[0], lights = res[1];
+      if (Array.isArray(groups) && groups[0] && groups[0].error) {
+        $('step2').innerHTML = '<span class="bad">Uložený klíč bridge odmítl.</span> Ťukni na „Zapomenout klíč“ a vytvoř nový.';
+        return;
+      }
+      var html = '<b>Místnosti a světla na bridgi:</b><ul>';
+      Object.keys(groups).forEach(function (id) {
+        var g = groups[id];
+        if (g.type !== 'Room' && g.type !== 'Zone') return;
+        html += '<li>' + esc(g.name) + ' <span class="dim">(' + (g.type === 'Room' ? 'místnost' : 'zóna') + ' ' + id + ', ' +
+          (g.state && g.state.any_on ? 'svítí' : 'nesvítí') + ')</span><ul>' +
+          (g.lights || []).map(function (l) { return '<li class="dim">' + esc(lights[l] ? lights[l].name : l) + '</li>'; }).join('') + '</ul></li>';
+      });
+      $('step3').hidden = false;
+      $('step3').innerHTML = html + '</ul>';
+    }, function (e) { $('step3').hidden = false; $('step3').innerHTML = '<span class="bad">Seznam světel se nepodařilo načíst: ' + esc(e.message) + '</span>'; });
+  }
+  function askKey() {
+    call('', { method: 'POST', body: JSON.stringify({ devicetype: 'home_dashboard#tablet' }) }).then(function (j) {
+      var r = j && j[0];
+      if (r && r.success && r.success.username) {
+        cfg.key = r.success.username; save(cfg);
+        $('step2').innerHTML = '<span class="ok">Klíč je vytvořený a uložený v tomto tabletu.</span>';
+        showLights();
+      } else {
+        $('step2').innerHTML = '<b>Stiskni teď kulaté tlačítko na Hue Bridge.</b><div class="dim">Stránka to zkouší sama každé 3 sekundy (' +
+          new Date().toTimeString().slice(0, 8) + ').</div>';
+        timer = setTimeout(askKey, 3000);
+      }
+    }, function (e) {
+      $('step2').innerHTML = '<span class="bad">Bridge neodpovídá: ' + esc(e.message) + '</span>';
+      timer = setTimeout(askKey, 5000);
+    });
+  }
+
+  call('/0/config').then(function (c) {
+    $('step1').innerHTML = '<span class="ok">Spojení s bridgem funguje</span> <span class="dim">(' + esc(c.name) + ', API ' + esc(c.apiversion) + ')</span>';
+    if (cfg.key) { $('step2').innerHTML = '<span class="ok">Klíč je uložený v tomto tabletu.</span>'; showLights(); }
+    else askKey();
+  }, function (e) {
+    $('step1').innerHTML = '<span class="bad">Bridge neodpovídá: ' + esc(e.message) + '</span><div class="dim">Tablet se na bridge nedostal (síť, firewall nebo certifikát).</div>';
+  });
+})();
+</script>
+</body>
+</html>
