@@ -16,8 +16,25 @@
 
     // Rozcestník: další dlaždici přidáš novým řádkem. value: 'water' = dlaždice ukazuje teplotu vody.
     links: [
-      { title: 'Teploty vody', url: 'https://barkingbunny.github.io/vodomer-teplomer/treti/?home=1', icon: 'kapka', value: 'water' }
+      { title: 'Teploty vody', url: 'https://barkingbunny.github.io/vodomer-teplomer/treti/?home=1', icon: 'kapka', value: 'water' },
+      { title: 'Světla', url: 'svetla.html', icon: 'zarovka' }
     ],
+
+    // Světla na hlavní obrazovce (Philips Hue). room a lamp.name jsou názvy z bridge (bez ohledu na diakritiku).
+    // Tlačítko scény hledá v místnosti scénu, jejíž název začíná některým z match; když ji nenajde,
+    // rozsvítí celou místnost s náhradním jasem (bri 1–254) a teplotou barvy (ct 153–500).
+    lights: {
+      room: 'Obyvaci pokoj',
+      title: 'Obývák',
+      presets: [
+        { label: 'Den', icon: 'jasno-den', match: ['den'], fallback: { bri: 254, ct: 250 } },
+        { label: 'Čtení', icon: 'kniha', match: ['cten', 'read'], fallback: { bri: 254, ct: 346 } },
+        { label: 'Relax', icon: 'jasno-noc', match: ['relax'], fallback: { bri: 144, ct: 447 } }
+      ],
+      lamp: { name: 'Lampa gauc', label: 'Lampa gauč' },
+      interval: 15 * 1000,
+      offlineAfter: 60 * 1000
+    },
 
     interval: { water: 5 * MIN, now: 10 * MIN, forecast: 30 * MIN },
     fetchTimeout: 10 * 1000,
@@ -455,6 +472,79 @@
     });
   }
 
+  // ---------------------------------------------------------------- světla (Philips Hue)
+
+  var lightsMsg = null, lightsHtml = '', lightsBusy = false, lightsInfo = '';
+
+  function loadLights() {
+    if (DEMO) return Promise.resolve(demoLights());
+    return Hue.snapshot();
+  }
+
+  function renderLights() {
+    var L = CONFIG.lights, el = $('spare'), html;
+    if (!DEMO && !Hue.configured()) {
+      html = '<div class="tile room"><div class="room-head"><span>' + esc(L.title) + '</span><span class="note">světla nejsou nastavena</span></div></div>';
+    } else {
+      var d = lights.data, room = Hue.findGroup(d, L.room), lampId = Hue.findLight(d, L.lamp.name);
+      var offline = !d || (lights.phase === 'failed' && lights.age() > L.offlineAfter);
+      var text = !d ? (lights.phase === 'failed' ? 'bez spojení' : 'načítám…') : offline ? 'bez spojení' : !room ? 'místnost nenalezena' : room.anyOn ? 'svítí' : 'nesvítí';
+      var warn = offline || !!(d && !room);
+      if (lightsMsg) { text = lightsMsg.text; warn = lightsMsg.warn; }
+      var lampOn = !!(d && lampId && d.lights[lampId].on);
+      html = '<div class="tile room"><div class="room-head"><span>' + esc(L.title) + '</span><span class="note' + (warn ? ' warn' : '') + '">' + esc(text) + '</span></div>' +
+        '<div class="room-btns' + (offline ? ' dim' : '') + '">';
+      L.presets.forEach(function (p, i) {
+        html += '<div class="lb" data-act="preset" data-i="' + i + '"><div class="lb-icon">' + Icons.svg(p.icon) + '</div><div class="lb-label">' + esc(p.label) + '</div></div>';
+      });
+      html += '<div class="lb off' + (room && !room.anyOn ? ' active' : '') + '" data-act="off"><div class="lb-icon">' + Icons.svg('vypnout') + '</div><div class="lb-label">Vypnout</div></div>' +
+        '</div></div>' +
+        '<div class="tile lamp' + (lampOn ? ' on' : '') + (offline ? ' dim' : '') + '" data-act="lamp">' +
+        '<div class="lamp-icon">' + Icons.svg(lampOn ? 'zarovka-on' : 'zarovka') + '</div>' +
+        '<div class="lamp-label">' + esc(L.lamp.label) + '</div>' +
+        '<div class="note">' + (!d || !lampId ? '–' : !d.lights[lampId].reachable ? 'nedostupná' : lampOn ? 'svítí' : 'nesvítí') + '</div></div>';
+    }
+    if (html !== lightsHtml) { lightsHtml = html; el.innerHTML = html; }   // nepřekreslovat zbytečně pod prstem
+  }
+
+  function lightsNote(text, warn, ms) {
+    lightsMsg = { text: text, warn: warn };
+    renderLights();
+    if (ms) setTimeout(function () { lightsMsg = null; renderLights(); }, ms);
+  }
+
+  function lightsAction(act, i) {
+    var L = CONFIG.lights, d = lights.data;
+    if (lightsBusy || DEMO || !d) return;
+    var room = Hue.findGroup(d, L.room), lampId = Hue.findLight(d, L.lamp.name), job;
+    if (act === 'lamp') {
+      if (!lampId) return;
+      var on = !d.lights[lampId].on;
+      job = Hue.setLight(lampId, on).then(function () { d.lights[lampId].on = on; if (on && room) room.anyOn = true; return 'lampa ' + (on ? 'zap' : 'vyp'); });
+    } else {
+      if (!room) return;
+      if (act === 'off') {
+        job = Hue.setGroup(room.id, false).then(function () {
+          room.anyOn = false;
+          room.lights.forEach(function (id) { if (d.lights[id]) d.lights[id].on = false; });
+          return 'vypnuto';
+        });
+      } else {
+        job = Hue.applyPreset(room.id, L.presets[i]).then(function (how) { room.anyOn = true; return L.presets[i].label + ': ' + how; });
+      }
+    }
+    lightsBusy = true;
+    lightsNote('posílám…', false);
+    job.then(function (info) {
+      lightsBusy = false; lightsMsg = null; lightsInfo = hm(Date.now()) + ' ' + info;
+      renderLights();
+      setTimeout(function () { lights.start(); }, 800);   // skutečný stav z bridge
+    }, function (e) {
+      lightsBusy = false;
+      lightsNote(String(e && e.message || e), true, 4000);
+    });
+  }
+
   // ---------------------------------------------------------------- verze a znovunačtení stránky
 
   var versionSeq = 0, versionState = 'ok', versionInfo = '';
@@ -497,7 +587,7 @@
 
   var lastTick = Date.now(), lastWake = 0;
 
-  function renderAll() { renderForecast(); renderNow(); renderLinks(); }
+  function renderAll() { renderForecast(); renderNow(); renderLinks(); renderLights(); }
 
   function wake(reason) {
     var now = Date.now();
@@ -532,6 +622,7 @@
     sources.forEach(function (s) {
       lines.push(s.key + ': ' + s.phase + ' | staženo ' + (s.at ? when(s.at) : '–') + ' | další ' + when(s.nextDue) + (s.error ? ' | ' + s.error : ''));
     });
+    lines.push('světla: ' + (lightsInfo || '–'));
     lines.push('události: ' + (events.join(' · ') || '–'));
     lines.push('chyby: ' + (errors.join(' · ') || 'žádné'));
     $('debug').textContent = lines.join('\n');
@@ -562,6 +653,10 @@
     return { h: h, d: d };
   }
   function demoNow() { return { t: Date.now() - 7 * MIN, temp: 7.2, code: 3, day: 1, wind: 4.2, dir: 230 }; }
+  function demoLights() {
+    return { groups: [{ id: '1', name: 'Obývací pokoj', type: 'Room', anyOn: true, allOn: false, lights: ['1', '2'] }],
+      lights: { '1': { name: 'Lampa gauc', on: true, reachable: true }, '2': { name: 'Obyvak stred', on: false, reachable: true } } };
+  }
   function demoWater() { return { max: 39.75, maxT: Date.now() - 3 * HOUR, end: Date.now() - 95 * MIN, n: 241 }; }
 
   // ---------------------------------------------------------------- start
@@ -569,6 +664,8 @@
   var forecast = new Source('hd.forecast', CONFIG.interval.forecast, loadForecast, renderForecast);
   var nowSrc = new Source('hd.now', CONFIG.interval.now, loadNow, renderNow);
   var water = new Source('hd.water', CONFIG.interval.water, loadWater, renderLinks);
+  var lights = new Source('hd.lights', CONFIG.lights.interval, loadLights, renderLights);
+  if (!DEMO && !Hue.configured()) lights.tick = lights.wake = lights.online = function () { };   // bez nastavení se bridge nevolá
 
   $('version').textContent = 'v' + VERSION + (DEMO ? ' · ukázková data' : '');
   if (DEBUG) $('debug').hidden = false;
@@ -592,6 +689,10 @@
     if ($('days').hidden) { openDays(); forecast.start(); } else closeDays();
   });
   $('days').addEventListener('click', closeDays);
+  $('spare').addEventListener('click', function (e) {
+    var b = e.target.closest ? e.target.closest('[data-act]') : null;
+    if (b) lightsAction(b.getAttribute('data-act'), Number(b.getAttribute('data-i')));
+  });
   $('links').addEventListener('click', function (e) {
     var a = e.target.closest ? e.target.closest('a.link') : null;
     if (!a) return;

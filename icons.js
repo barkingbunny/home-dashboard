@@ -46,6 +46,10 @@
     // ostatní (mimo počasí)
     'kapka': '<path d="M32 8C24 20 16 29 16 39a16 16 0 0 0 32 0C48 29 40 20 32 8z" fill="none" stroke="' + C_RAIN + '" stroke-width="3.5"/>' +
       '<path d="M24 40a8 8 0 0 0 8 8" stroke="' + C_RAIN + '" stroke-width="3"/>',
+    'kniha': strokes('M32 18c-6-4-14-5-22-4v32c8-1 16 0 22 4 6-4 14-5 22-4V14c-8-1-16 0-22 4zM32 18v32', C_LINE),
+    'vypnout': strokes('M32 10v20M20 18a18 18 0 1 0 24 0', C_LINE, 4),
+    'zarovka': strokes('M24 44c-5-4-8-9-8-15a16 16 0 0 1 32 0c0 6-3 11-8 15v4H24zM26 54h12M28 59h8', C_LINE),
+    'zarovka-on': '<path d="M24 44c-5-4-8-9-8-15a16 16 0 0 1 32 0c0 6-3 11-8 15v4H24z" fill="' + C_SUN + '"/>' + strokes('M26 54h12M28 59h8', C_LINE),
     'odkaz': strokes('M24 14l18 18-18 18', C_LINE, 4)
   };
 
